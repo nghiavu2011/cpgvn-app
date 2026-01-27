@@ -4,7 +4,7 @@ import { SourceImage, BoundingBox, AnnotationBox } from "../types";
 
 // Initialize GoogleGenAI with a mechanism to update the API key.
 const getStoredApiKey = () => {
-    return localStorage.getItem('cpgvn_gemini_api_key') || process.env.API_KEY || '';
+    return localStorage.getItem('cpgvn_gemini_api_key') || (typeof process !== 'undefined' ? process.env?.API_KEY : '') || '';
 };
 
 let ai = new GoogleGenAI({ apiKey: getStoredApiKey() });
@@ -21,8 +21,6 @@ export const updateGeminiApiKey = (newKey: string) => {
 export type TourMoveType = 'pan-up' | 'pan-down' | 'pan-left' | 'pan-right' | 'orbit-left' | 'orbit-right' | 'zoom-in' | 'zoom-out';
 export type TourEffectType = 'night' | 'day' | 'magic' | 'snow' | 'starry';
 export type SketchStyle = 'pencil' | 'watercolor' | 'oil';
-
-export { AnnotationBox };
 
 // --- Helpers ---
 export const sourceImageToDataUrl = (image: SourceImage): string => {
@@ -75,8 +73,6 @@ const getClosestAspectRatio = async (image: SourceImage): Promise<string> => {
 };
 
 // --- Strict Masking Composite (NEW) ---
-// This function ensures that the generated image is ONLY applied where the mask exists.
-// Everything outside the mask is forced to remain exactly as the original image.
 export const strictComposite = async (originalB64: string, generatedB64: string, maskB64: string): Promise<string> => {
     try {
         const [orig, gen, mask] = await Promise.all([loadImage(originalB64), loadImage(generatedB64), loadImage(maskB64)]);
@@ -86,55 +82,44 @@ export const strictComposite = async (originalB64: string, generatedB64: string,
         canvas.height = orig.height;
         const ctx = canvas.getContext('2d')!;
 
-        // 1. Draw the absolute original first (Background)
         ctx.drawImage(orig, 0, 0);
 
-        // 2. Create a temporary canvas to hold the "masked generated content"
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = canvas.width;
         tempCanvas.height = canvas.height;
         const tempCtx = tempCanvas.getContext('2d')!;
 
-        // Draw the AI generated image
         tempCtx.drawImage(gen, 0, 0, canvas.width, canvas.height);
-
-        // Apply the mask as an alpha channel
-        // 'destination-in': The existing content is kept where it overlaps the new shape. 
-        // Everything else becomes transparent.
         tempCtx.globalCompositeOperation = 'destination-in';
         tempCtx.drawImage(mask, 0, 0, canvas.width, canvas.height);
 
-        // 3. Draw the masked AI content on top of the original
         ctx.drawImage(tempCanvas, 0, 0);
 
         return canvas.toDataURL('image/png');
     } catch (e) {
         console.error("Strict composite failed:", e);
-        return generatedB64; // Fallback to raw generation if composite fails
+        return generatedB64;
     }
 };
 
 // --- Advanced Editing Features (New) ---
 
-// 1. Hàm chính: Chỉnh sửa ảnh (Inpainting/Editing/Element Injection)
 export const generateImageWithElements = async (
     prompt: string,
     mainImage: SourceImage,
     maskImage: SourceImage | null,
     elements: SourceImage[],
     styleGuide: string,
-    creativity: number, // 1-10
+    creativity: number,
     isInpainting: boolean
 ): Promise<string | null> => {
 
     const parts: any[] = [{ inlineData: { mimeType: mainImage.mimeType, data: mainImage.base64 } }];
 
-    // Nếu có mask, thêm mask vào (cho inpainting truyền thống)
     if (maskImage && isInpainting) {
         parts.push({ inlineData: { mimeType: maskImage.mimeType, data: maskImage.base64 } });
     }
 
-    // Thêm các layer vật thể phụ (nếu có) - Element Injection
     elements.forEach(el => parts.push({ inlineData: { mimeType: el.mimeType, data: el.base64 } }));
 
     let fullPrompt = prompt;
@@ -155,7 +140,7 @@ export const generateImageWithElements = async (
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', // Model tốt nhất cho chỉnh sửa
+            model: 'gemini-2.5-flash-image',
             contents: { parts },
             config: { responseModalities: [Modality.IMAGE] }
         });
@@ -171,7 +156,6 @@ export const generateImageWithElements = async (
     return null;
 };
 
-// 2. Tối ưu Prompt
 export const optimizeEnhancePrompt = async (prompt: string, image: SourceImage | null, language: string): Promise<string> => {
     try {
         const parts: any[] = [];
@@ -191,7 +175,6 @@ export const optimizeEnhancePrompt = async (prompt: string, image: SourceImage |
     }
 };
 
-// 3. Xóa nền (Remove Background)
 export const removeImageBackground = async (sourceImage: SourceImage): Promise<string | null> => {
     try {
         const response = await ai.models.generateContent({
@@ -216,7 +199,6 @@ export const removeImageBackground = async (sourceImage: SourceImage): Promise<s
     return null;
 };
 
-// 4. Hòa trộn (Magic Mix / Composite)
 export const generateCompositeImage = async (objectImage: SourceImage, bgImage: SourceImage, positionDescription: string): Promise<string | null> => {
     const prompt = `Composite the object image into the background image. ${positionDescription}. Blend lighting, shadows, and perspective realistically.`;
 
@@ -243,8 +225,6 @@ export const generateCompositeImage = async (objectImage: SourceImage, bgImage: 
     }
     return null;
 };
-
-// --- Legacy & Utilities ---
 
 export const cropImage = async (image: SourceImage, box: BoundingBox): Promise<SourceImage> => {
     const img = await loadImage(sourceImageToDataUrl(image));
@@ -298,9 +278,6 @@ export const editImage = async (
     referenceImage: SourceImage | null = null,
     annotations: AnnotationBox[] = []
 ): Promise<string | null> => {
-    // Wrapper for the old call to use the new generic function if desired, 
-    // or keep separate. For now, we keep separate to ensure backward compatibility 
-    // while the ImageEditor is being rewritten.
     return generateImageWithElements(prompt, sourceImage, maskImage, referenceImage ? [referenceImage] : [], "", 5, true);
 };
 
@@ -471,35 +448,7 @@ Analytical, professional, engineering-oriented.`
 }
 
 export const generateArchitecturalPrompts = async (sourceImage: SourceImage): Promise<string> => {
-    const systemPrompt = `Với vai trò là một nhiếp ảnh gia kiến trúc chuyên nghiệp, nhiệm vụ của bạn là phân tích hình ảnh công trình được cung cấp và tạo ra một danh sách gồm chính xác 20 prompt nhiếp ảnh đa dạng và chuyên nghiệp.
-    
-    ĐỊNH DẠNG TRẢ VỀ (Bắt buộc):
-    **TOÀN CẢNH**
-    - [Prompt 1]
-    - [Prompt 2]
-    - [Prompt 3]
-    - [Prompt 4]
-    - [Prompt 5]
-    **TRUNG CẢNH**
-    - [Prompt 6]
-    - [Prompt 7]
-    - [Prompt 8]
-    - [Prompt 9]
-    - [Prompt 10]
-    **CẬN CẢNH**
-    - [Prompt 11]
-    - [Prompt 12]
-    - [Prompt 13]
-    - [Prompt 14]
-    - [Prompt 15]
-    **CINEMATIC**
-    - [Prompt 16]
-    - [Prompt 17]
-    - [Prompt 18]
-    - [Prompt 19]
-    - [Prompt 20]
-    
-    Lưu ý: Chỉ trả về danh sách, không thêm lời dẫn. Viết bằng tiếng Việt.`;
+    const systemPrompt = `Với vai trò là một nhiếp ảnh gia kiến trúc chuyên nghiệp, nhiệm vụ của bạn là phân tích hình ảnh công trình được cung cấp và tạo ra một danh sách gồm chính xác 20 prompt nhiếp ảnh đa dạng và chuyên nghiệp. Viết bằng tiếng Việt.`;
 
     const parts = [
         { inlineData: { data: sourceImage.base64, mimeType: sourceImage.mimeType } },

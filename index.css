@@ -1,0 +1,4 @@
+/* Base Tailwind-like utilities or empty if not used elsewhere */
+:root {
+    /* You can move the root variables here if you want to use standard CSS imports */
+}
