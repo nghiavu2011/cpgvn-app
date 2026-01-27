@@ -12,7 +12,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const translations: Record<Language, Record<string, string>> = {
   vi: {
-    app_title: "CPG VIETNAM",
+    app_title: "CPGVN",
     landing_explore: "Khám Phá Ngay",
     landing_render: "Render Ngoại Thất",
     landing_edit: "Chỉnh Sửa Ảnh",
@@ -163,7 +163,7 @@ const translations: Record<Language, Record<string, string>> = {
     api_key_missing: "Vui lòng nhập API Key để bắt đầu.",
   },
   en: {
-    app_title: "CPG VIETNAM",
+    app_title: "CPGVN",
     landing_explore: "Explore Now",
     landing_render: "Exterior Render",
     landing_edit: "Edit Image",
@@ -312,7 +312,7 @@ const translations: Record<Language, Record<string, string>> = {
     api_key_missing: "Please enter an API Key to proceed.",
   },
   zh: {
-    app_title: "CPG VIETNAM",
+    app_title: "CPGVN",
     landing_explore: "立即探索",
     landing_render: "外观渲染",
     landing_edit: "图像编辑",
