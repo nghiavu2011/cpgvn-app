@@ -12,8 +12,8 @@ const getStoredApiKey = () => {
 // User Request: "gemini-2.5-flash-image" (Image/Vision) -> Real: "imagen-3.0-generate-001" (Current SOTA Image Gen)
 
 export const MODEL_IDS = {
-    TEXT_LOGIC: 'gemini-2.0-flash', // For prompts, layout analysis, reasoning
-    IMAGE_GEN: 'imagen-3.0-generate-001', // For rendering, converting styles
+    TEXT_LOGIC: 'gemini-2.0-flash-exp', // Corrected: Needs '-exp' suffix for current access
+    IMAGE_GEN: 'imagen-3.0-generate-001', // Keeps Imagen 3
 };
 
 // Variable to hold the AI instance, initialized only if key exists
