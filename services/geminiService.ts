@@ -7,9 +7,18 @@ const getStoredApiKey = () => {
     return localStorage.getItem('cpgvn_gemini_api_key') || (typeof process !== 'undefined' ? process.env?.API_KEY : '') || '';
 };
 
+// Define Model IDs - Mapping User Request to Best Available Real Models
+// User Request: "gemini-3-flash-preview" (Text/Logic) -> Real: "gemini-2.0-flash" (Current SOTA Speed/Logic)
+// User Request: "gemini-2.5-flash-image" (Image/Vision) -> Real: "imagen-3.0-generate-001" (Current SOTA Image Gen)
+
+export const MODEL_IDS = {
+    TEXT_LOGIC: 'gemini-2.0-flash', // For prompts, layout analysis, reasoning
+    IMAGE_GEN: 'imagen-3.0-generate-001', // For rendering, converting styles
+};
+
 // Variable to hold the AI instance, initialized only if key exists
 let ai: any = null;
-let preferredModelId = localStorage.getItem('cpgvn_preferred_model') || 'gemini-2.0-flash-exp';
+let preferredModelId = localStorage.getItem('cpgvn_preferred_model') || MODEL_IDS.TEXT_LOGIC;
 
 const initAI = () => {
     const key = getStoredApiKey();
@@ -64,7 +73,9 @@ const generateImageRest = async (prompt: string, aspectRatio: string = "1:1", im
             // However, we construct the payload to attempt passing the image if provided, 
             // matching the expected structure for editing/variation if available.
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${key}`;
+            // Use the preferred image model or default to Imagen 3
+            const modelName = MODEL_IDS.IMAGE_GEN;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:predict?key=${key}`;
 
             const instance: any = { prompt: prompt };
 
@@ -290,7 +301,7 @@ export const optimizeEnhancePrompt = async (prompt: string, image: SourceImage |
 
         if (!ai) throw new Error("Gemini API Key is not set.");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: MODEL_IDS.TEXT_LOGIC,
             contents: [{ role: 'user', parts }]
         });
         return response.text?.trim() || prompt;
@@ -586,7 +597,7 @@ export const analyzeFloorplanPrompt = async (image: SourceImage, type: string, s
     try {
         if (!ai) throw new Error("Gemini API Key is not set.");
         const res = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: MODEL_IDS.TEXT_LOGIC,
             contents: [{ role: 'user', parts: [{ inlineData: { data: image.base64, mimeType: image.mimeType } }, { text: `Analyze drawing ${type}, style ${style}. Output prompt.` }] }]
         });
         return res.response?.text() || res.text?.() || res.text || null;
@@ -600,7 +611,7 @@ export const analyzeLayout3DPrompt = async (s: SourceImage, r: SourceImage | nul
     try {
         if (!ai) throw new Error("Gemini API Key is not set.");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: MODEL_IDS.TEXT_LOGIC,
             contents: [{ role: 'user', parts }],
         });
         return response.text?.trim() || "";
@@ -633,7 +644,7 @@ export const applyEffectToTourImage = async (i: SourceImage, e: TourEffectType):
 export const generateDiagramPromptFromReference = async (s: SourceImage, r: SourceImage): Promise<string> => {
     if (!ai) throw new Error("Gemini API Key is not set.");
     const res = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
+        model: MODEL_IDS.TEXT_LOGIC,
         contents: [{ role: 'user', parts: [{ inlineData: { data: s.base64, mimeType: s.mimeType } }, { inlineData: { data: r.base64, mimeType: r.mimeType } }, { text: "Generate diagram style prompt." }] }]
     });
     return res.text || "";
@@ -642,7 +653,7 @@ export const generateDiagramPromptFromReference = async (s: SourceImage, r: Sour
 export const generateOutpaintingPrompt = async (s: SourceImage): Promise<string> => {
     if (!ai) throw new Error("Gemini API Key is not set.");
     const res = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
+        model: MODEL_IDS.TEXT_LOGIC,
         contents: [{ role: 'user', parts: [{ inlineData: { data: s.base64, mimeType: s.mimeType } }, { text: "Describe outpainting surroundings." }] }]
     });
     return res.response?.text() || res.text?.() || res.text || "";
