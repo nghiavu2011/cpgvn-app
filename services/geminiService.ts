@@ -101,18 +101,26 @@ const generateImageRest = async (prompt: string, aspectRatio: string = "1:1", im
                 body: JSON.stringify(body)
             });
 
-            // If 400 error, it's likely the key doesn't support I2I/Variations. Retry with T2I only.
-            if (response.status === 400 && inputImages.length > 0) {
-                console.warn("Google API Key likely doesn't support I2I. Retrying with T2I + Enriched Prompt...");
-                const bodyT2I = {
-                    instances: [{ prompt: prompt }],
-                    parameters: body.parameters
-                };
-                response = await fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(bodyT2I)
-                });
+            // Handle errors
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                const errMsg = errData.error?.message || response.statusText;
+
+                // If 400 error, it's likely the key doesn't support I2I/Variations. Retry with T2I only.
+                if (response.status === 400 && inputImages.length > 0) {
+                    console.warn("Google API Key likely doesn't support I2I. Retrying with T2I...");
+                    response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            instances: [{ prompt: prompt }],
+                            parameters: body.parameters
+                        })
+                    });
+                } else if (response.status === 403 || response.status === 404 || response.status === 429) {
+                    // Critical identity/quota errors - don't fallback to Pollinations silently
+                    throw new Error(`Google API Error (${response.status}): ${errMsg}`);
+                }
             }
 
             if (response.ok) {
@@ -120,37 +128,41 @@ const generateImageRest = async (prompt: string, aspectRatio: string = "1:1", im
                 if (data.predictions && data.predictions.length > 0) {
                     return data.predictions.map((p: any) => `data:image/png;base64,${p.bytesBase64Encoded}`);
                 }
-            } else {
-                console.warn(`Google Imagen API Failed (${response.status}), falling back to Pollinations...`);
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error("Google Imagen API Error:", e);
+            // If it's a critical error we threw, rethrow it to stop fallback
+            if (e.message?.includes("Google API Error")) throw e;
         }
     }
 
-    // 2. Fallback to Pollinations.ai (Free, Fast, T2I only usually)
-    // Note: Pollinations 'image' param requires a URL, not base64. 
-    // Without an upload server, we can only do T2I here effectively.
-    // To support "Sketch-to-Render" behavior via T2I, we rely on the prompt being very descriptive.
-
+    // 2. Fallback to Pollinations.ai (Free, restricted)
+    // To avoid "anonymous tier limit", we rotate models and add cache-busting
+    console.warn("Using Pollinations fallback...");
     try {
         let width = 1024;
         let height = 1024;
-        // Map aspect ratios
         if (aspectRatio === "16:9") { width = 1280; height = 720; }
         else if (aspectRatio === "4:3") { width = 1024; height = 768; }
         else if (aspectRatio === "3:4") { width = 768; height = 1024; }
         else if (aspectRatio === "9:16") { width = 720; height = 1280; }
 
         const promises = Array.from({ length: imageCount }).map(async () => {
-            const seed = Math.floor(Math.random() * 1000000);
-            // We encode the prompt. If we had an image URL, we would append &image=${url}
-            const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
+            const seed = Math.floor(Math.random() * 10000000);
+            // Rotating models to avoid some rate limits: flux -> turbo
+            const model = Math.random() > 0.5 ? 'flux' : 'turbo';
+            const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=${model}`;
 
             const response = await fetch(finalUrl);
-            if (!response.ok) throw new Error("Pollinations Failed");
+            if (!response.ok) throw new Error("Fallback engine failed");
 
             const blob = await response.blob();
+
+            // Check if we got a tiny image (often happens when rate limited/error)
+            if (blob.size < 10000) {
+                throw new Error("Pollinations service limited (Size check failed)");
+            }
+
             return new Promise<string>((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result as string);
@@ -162,7 +174,7 @@ const generateImageRest = async (prompt: string, aspectRatio: string = "1:1", im
         return await Promise.all(promises);
     } catch (e) {
         console.error("All Image Generation Failed:", e);
-        return [];
+        throw new Error("Tất cả các dịch vụ tạo ảnh hiện đang bận hoặc hết hạn mức. Vui lòng kiểm tra lại Google API Key hoặc thử lại sau.");
     }
 };
 
