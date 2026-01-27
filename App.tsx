@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useEffect, Suspense } from 'react';
 import type { RenderHistoryItem, SourceImage, EditHistoryItem, GeneratedPrompts, RenderTabState } from './types';
-import { generateImages, upscaleImage, convertToSketchyStyle, analyzeLayout3DPrompt, convertToStyle, updateGeminiApiKey } from './services/geminiService';
+import { generateImages, upscaleImage, convertToSketchyStyle, analyzeLayout3DPrompt, convertToStyle, updateGeminiApiKey, updatePreferredModel } from './services/geminiService';
 import { Icon } from './components/icons';
 import { ToastProvider, useToast } from './components/Toast';
 import { Section, ImageUpload, ReferenceImageUpload, ResultDisplay, ImageViewerModal, VisualAngleSelector, Footer, UserGuideModal, ApiKeyModal, selectCommonStyles, CreativitySlider, ImageCompareSlider } from './components/Shared';
@@ -9,6 +9,7 @@ import { useLanguage, Language } from './components/LanguageContext';
 import { HistoryPanel } from './components/HistoryPanel';
 import { EditHistoryPanel } from './components/EditHistoryPanel';
 import { MasterplanTo3D } from './components/MasterplanTo3D';
+import { Login } from './components/Login';
 
 // Lazy Load Heavy Components
 const ImageEditor = React.lazy(() => import('./components/ImageEditor').then(module => ({ default: module.ImageEditor })));
@@ -171,6 +172,7 @@ const HeaderYellowVanIcon = () => (
 );
 
 function AppContent() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showApp, setShowApp] = useState(false);
   const [activeTab, setActiveTab] = useState<AppTab>('exterior');
   const [imageForEditing, setImageForEditing] = useState<SourceImage | null>(null);
@@ -182,6 +184,13 @@ function AppContent() {
   const { t, language, setLanguage } = useLanguage();
   const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(localStorage.getItem('cpgvn_preferred_model') || 'gemini-2.0-flash-exp');
+
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId);
+    updatePreferredModel(modelId);
+    addToast({ type: 'info', title: 'Model Updated', message: `Using ${modelId.includes('imagen') ? 'Imagen 3' : 'Gemini 2.0'}` });
+  };
 
   useEffect(() => {
     const key = localStorage.getItem('cpgvn_gemini_api_key');
@@ -707,6 +716,10 @@ function AppContent() {
     updateActiveTabState({ selectedImageIndex: index });
   }, [activeTab]);
 
+  if (!isAuthenticated) {
+    return <Login onAuthenticated={() => setIsAuthenticated(true)} />;
+  }
+
   return (
     <>
       {!showApp && <LandingPage onEnter={() => setShowApp(true)} onQuickLink={handleQuickLink} />}
@@ -747,6 +760,18 @@ function AppContent() {
                 <button onClick={resetImageCount} title="Reset" className="ml-2 text-[var(--text-tertiary)] hover:text-[var(--text-danger)] transition-colors"><Icon name="arrow-path" className="w-4 h-4" /></button>
               </div>
 
+              <div className="flex items-center bg-[var(--bg-surface-1)] border border-[var(--border-1)] rounded-full px-4 py-1.5 shadow-lg gap-2">
+                <Icon name="sparkles" className="w-4 h-4 text-purple-500" />
+                <select
+                  value={selectedModel}
+                  onChange={(e) => handleModelChange(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-[var(--text-primary)] outline-none cursor-pointer"
+                >
+                  <option value="gemini-2.0-flash-exp" className="bg-[var(--bg-surface-4)] text-[var(--text-primary)]">Gemini 2.0 Flash</option>
+                  <option value="imagen-3.0-generate-001" className="bg-[var(--bg-surface-4)] text-[var(--text-primary)]">Imagen 3 (AI Studio)</option>
+                </select>
+              </div>
+
               <div className="flex items-center bg-[var(--bg-surface-1)] border border-[var(--border-1)] rounded-full p-1 shadow-lg">
                 {(['en', 'vi', 'zh'] as Language[]).map((lang) => (
                   <button
@@ -775,6 +800,13 @@ function AppContent() {
                   </button>
                 </div>
               </div>
+              <button
+                onClick={() => { localStorage.removeItem('cpgvn_user'); setIsAuthenticated(false); }}
+                className="bg-red-500/10 border border-red-500/20 rounded-full p-2 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg ml-2"
+                title="Logout"
+              >
+                <Icon name="arrow-path" className="w-5 h-5" />
+              </button>
             </div>
           </header>
 

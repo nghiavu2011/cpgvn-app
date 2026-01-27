@@ -1,4 +1,228 @@
-/* Base Tailwind-like utilities or empty if not used elsewhere */
 :root {
-    /* You can move the root variables here if you want to use standard CSS imports */
+    /* Dark theme (default) */
+    --bg-gradient-start: #0d1117;
+    --bg-gradient-end: #111827;
+    --bg-surface-1: rgba(30, 41, 59, 0.4);
+    --bg-surface-2: rgba(55, 65, 81, 0.5);
+    --bg-surface-3: #424229;
+    --bg-surface-4: #0f172a;
+    --bg-interactive: #4f46e5;
+    --bg-interactive-hover: #4338ca;
+    --bg-disabled: #475569;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --text-interactive: #ffffff;
+    --text-accent: #fcd34d;
+    --text-danger: #f87171;
+    --text-danger-hover: #ef4444;
+    --border-1: rgba(55, 65, 81, 0.5);
+    --border-2: #4b5563;
+    --border-accent: #f59e0b;
+    --border-interactive: #4f46e5;
+    --ring-focus: #f59e0b;
+    --ring-active: #4f46e5;
+    --shadow-color: rgba(0, 0, 0, 0.25);
+    --select-arrow-svg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+.font-montserrat {
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0d1117;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #374151;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4b5563;
+}
+
+body.light {
+    --bg-gradient-start: #f1f5f9;
+    --bg-gradient-end: #e2e8f0;
+    --bg-surface-1: #ffffff;
+    --bg-surface-2: #f8fafc;
+    --bg-surface-3: #fffbeb;
+    --bg-surface-4: #e2e8f0;
+    --bg-interactive: #2563eb;
+    --bg-interactive-hover: #1d4ed8;
+    --bg-disabled: #94a3b8;
+    --text-primary: #1e293b;
+    --text-secondary: #334155;
+    --text-tertiary: #64748b;
+    --text-interactive: #ffffff;
+    --text-accent: #1e3a8a;
+    --text-danger: #ef4444;
+    --text-danger-hover: #dc2626;
+    --border-1: #e2e8f0;
+    --border-2: #cbd5e1;
+    --border-accent: #2563eb;
+    --border-interactive: #2563eb;
+    --ring-focus: #2563eb;
+    --ring-active: #2563eb;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+body.light ::-webkit-scrollbar-track {
+    background: #e2e8f0;
+}
+
+body.light ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+}
+
+body.light ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+body.orange {
+    --bg-gradient-start: #4a2100;
+    --bg-gradient-end: #2c1400;
+    --bg-surface-1: rgba(45, 20, 0, 0.5);
+    --bg-surface-2: rgba(68, 32, 0, 0.6);
+    --bg-surface-3: #78350f;
+    --bg-surface-4: #1e0d00;
+    --bg-interactive: #f97316;
+    --bg-interactive-hover: #ea580c;
+    --bg-disabled: #7c2d12;
+    --text-primary: #f8fafc;
+    --text-secondary: #d1d5db;
+    --text-tertiary: #9ca3af;
+    --text-interactive: #ffffff;
+    --text-accent: #fbbf24;
+    --text-danger: #f87171;
+    --text-danger-hover: #ef4444;
+    --border-1: rgba(124, 45, 18, 0.5);
+    --border-2: #9a3412;
+    --border-accent: #fbbf24;
+    --border-interactive: #f97316;
+    --ring-focus: #f97316;
+    --ring-active: #f97316;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+body.christmas::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: url('https://images.pexels.com/photos/5703310/pexels-photo-5703310.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');
+    background-size: cover;
+    background-position: center center;
+    filter: blur(2px) brightness(0.6);
+    transform: scale(1.1);
+}
+
+body.tet::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: url('https://images.pexels.com/photos/16355675/pexels-photo-16355675.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');
+    background-size: cover;
+    background-position: center center;
+    filter: blur(2px) brightness(0.7);
+    transform: scale(1.1);
+}
+
+body.beach::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: url('https://images.pexels.com/photos/1638459/pexels-photo-1638459.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');
+    background-size: cover;
+    background-position: center center;
+    filter: blur(6px) brightness(0.75) saturate(1.0);
+    transform: scale(1.1);
+}
+
+body.architecture::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-image: url('https://images.pexels.com/photos/2246476/pexels-photo-2246476.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2');
+    background-size: cover;
+    background-position: center center;
+    filter: brightness(0.6) saturate(0.8);
+}
+
+body.architecture::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFF' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    animation: blueprint-scroll 60s linear infinite;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
+/* Snowflakes, Blossoms, Leaves animations... */
+.snowflake,
+.blossom,
+.leaf {
+    position: fixed;
+    top: -5%;
+    z-index: -1;
+    user-select: none;
+}
+
+@keyframes snowflakes-fall {
+    0% {
+        top: -10%;
+    }
+
+    100% {
+        top: 100%;
+    }
+}
+
+@keyframes snowflakes-shake {
+
+    0%,
+    100% {
+        transform: translateX(0px);
+    }
+
+    50% {
+        transform: translateX(80px);
+    }
+}
+
+/* Utility styles */
+.hidden {
+    display: none;
 }

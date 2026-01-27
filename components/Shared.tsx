@@ -492,17 +492,33 @@ export const ApiKeyModal: React.FC<{
           {t('api_key_title')}
         </h2>
         <p className="text-sm text-[var(--text-secondary)] mb-6">{t('api_key_desc')}</p>
+        <div className="bg-[var(--bg-surface-2)] p-4 rounded-lg border border-[var(--border-2)] mb-4">
+          <h3 className="text-sm font-bold text-[var(--text-accent)] mb-2 flex items-center gap-2">
+            <Icon name="question-mark-circle" className="w-4 h-4" />
+            Hướng dẫn lấy API Key (Miễn phí)
+          </h3>
+          <ol className="list-decimal list-inside text-xs text-[var(--text-secondary)] space-y-1.5 ml-1">
+            <li>Truy cập <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[var(--text-interactive)] hover:underline font-bold">Google AI Studio</a>.</li>
+            <li>Đăng nhập bằng tài khoản Google của bạn.</li>
+            <li>Nhấn vào nút <span className="font-bold bg-[var(--bg-surface-3)] px-1 rounded">Create API key</span>.</li>
+            <li>Chọn <span className="font-bold bg-[var(--bg-surface-3)] px-1 rounded">Create API key in new project</span>.</li>
+            <li>Sao chép mã Key bắt đầu bằng <span className="font-mono text-[var(--text-accent)]">AIza...</span> và dán vào bên dưới.</li>
+          </ol>
+          <p className="text-[10px] text-[var(--text-tertiary)] mt-2 italic">
+            *Lưu ý: API Key được lưu trực tiếp trên trình duyệt của bạn (Local Storage) và không được gửi đi đâu khác ngoài Google.
+          </p>
+        </div>
         <div className="space-y-4">
           <input
             type="password"
             value={key}
             onChange={(e) => setKey(e.target.value)}
-            placeholder={t('api_key_placeholder')}
-            className="w-full bg-[var(--bg-surface-3)] p-3 rounded-md text-sm border border-[var(--border-2)] focus:ring-2 focus:ring-[var(--ring-focus)] outline-none"
+            placeholder="Dán API Key của bạn vào đây (AIza...)"
+            className="w-full bg-[var(--bg-surface-3)] p-3 rounded-md text-sm border border-[var(--border-2)] focus:ring-2 focus:ring-[var(--ring-focus)] outline-none font-mono"
           />
           <button
             onClick={() => onSave(key)}
-            className="w-full bg-[var(--bg-interactive)] hover:bg-[var(--bg-interactive-hover)] text-white font-bold py-3 px-4 rounded-lg transition-colors"
+            className="w-full bg-[var(--bg-interactive)] hover:bg-[var(--bg-interactive-hover)] text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-lg hover:shadow-xl hover:scale-[1.02] transform duration-200"
           >
             {t('api_key_save')}
           </button>
