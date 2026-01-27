@@ -95,11 +95,25 @@ const generateImageRest = async (prompt: string, aspectRatio: string = "1:1", im
                 }
             };
 
-            const response = await fetch(url, {
+            let response = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body)
             });
+
+            // If 400 error, it's likely the key doesn't support I2I/Variations. Retry with T2I only.
+            if (response.status === 400 && inputImages.length > 0) {
+                console.warn("Google API Key likely doesn't support I2I. Retrying with T2I + Enriched Prompt...");
+                const bodyT2I = {
+                    instances: [{ prompt: prompt }],
+                    parameters: body.parameters
+                };
+                response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(bodyT2I)
+                });
+            }
 
             if (response.ok) {
                 const data = await response.json();
@@ -213,6 +227,25 @@ const getClosestAspectRatio = async (image: SourceImage): Promise<string> => {
     } catch (e) {
         console.error("Error calculating aspect ratio", e);
         return "1:1";
+    }
+};
+
+/**
+ * Visual Analysis Helper: Uses Gemini 2.0 Flash to extract structural and aesthetic details 
+ * from the source image to ensure high-fidelity Image-to-Image results.
+ */
+export const visualAnalyze = async (image: SourceImage, task: string = "Describe exactly what is in this image for an architectural AI render prompt. Focus on geometry, materials, and position."): Promise<string> => {
+    if (!ai) return "";
+    try {
+        const response = await ai.models.generateContent({
+            model: MODEL_IDS.TEXT_LOGIC,
+            contents: [{ role: 'user', parts: [{ inlineData: { data: image.base64, mimeType: image.mimeType } }, { text: task }] }]
+        });
+        const text = response.response?.text?.() || response.text?.() || response.text || "";
+        return text.trim();
+    } catch (e) {
+        console.error("Visual analysis failed:", e);
+        return "";
     }
 };
 
@@ -410,7 +443,9 @@ export const convertToStyle = async (
     };
 
     try {
-        const images = await generateImageRest(prompts[style], "1:1", 1, [sourceImage]);
+        const visualContext = await visualAnalyze(sourceImage);
+        const finalPrompt = `${prompts[style]}. Maintain this structure: ${visualContext}`;
+        const images = await generateImageRest(finalPrompt, "1:1", 1);
         return images[0] || null;
     } catch (e) {
         console.error("Conversion failed:", e);
@@ -532,7 +567,9 @@ Analytical, professional, engineering-oriented.`
     parts.push({ text: finalPrompt });
 
     try {
-        const images = await generateImageRest(finalPrompt, await getClosestAspectRatio(sourceImage), 1, [sourceImage, ...(moodImage ? [moodImage] : [])]);
+        const visualContext = await visualAnalyze(sourceImage);
+        const finalPromptWithContext = `${finalPrompt}. Base structure to follow: ${visualContext}`;
+        const images = await generateImageRest(finalPromptWithContext, await getClosestAspectRatio(sourceImage), 1);
         return images[0] || null;
     } catch (e) {
         console.error("Style conversion error:", e);
@@ -587,10 +624,23 @@ export const generateImages = async (s: SourceImage, p: string, t: 'exterior' | 
     }
 
     try {
+        // Step 1: Analyze the source image to extract structural details
+        const visualContext = await visualAnalyze(s, `Analyze this architectural ${t} and describe its geometry, massing, and materials in detail for a render.`);
+
+        // Step 2: Combine with user intent and reference style
+        let finalPrompt = `Architectural high-quality render. Subject: ${visualContext}. User Request: ${p}.`;
+        if (r) {
+            const styleContext = await visualAnalyze(r, "Analyze the artistic style, lighting, and mood of this reference image.");
+            finalPrompt += ` Style reference: ${styleContext}.`;
+        }
+
         // Use REST API for Imagen 3
-        const images = await generateImageRest(fullPrompt, vr, n, [s, ...(r ? [r] : [])]);
+        const images = await generateImageRest(finalPrompt, vr, n);
         return images;
-    } catch (e) { throw e; }
+    } catch (e) {
+        console.error("Generate images error:", e);
+        throw e;
+    }
 };
 
 export const analyzeFloorplanPrompt = async (image: SourceImage, type: string, style: string): Promise<string | null> => {
@@ -628,7 +678,9 @@ export const generateDiagramImage = async (s: SourceImage, t: string, n: string,
 export const generateVirtualTourImage = async (i: SourceImage, m: TourMoveType, mag: number): Promise<string | null> => {
     const aspectRatio = await getClosestAspectRatio(i);
     try {
-        const images = await generateImageRest(`Virtual Tour Perspective: Move ${m} ${mag} degrees.`, aspectRatio, 1, [i]);
+        const visualContext = await visualAnalyze(i);
+        const prompt = `Virtual Tour Perspective: Moving ${m} ${mag} degrees from this scene: ${visualContext}. Maintain exact architecture.`;
+        const images = await generateImageRest(prompt, aspectRatio, 1);
         return images[0] || null;
     } catch (e) { return null; }
 };
@@ -636,7 +688,9 @@ export const generateVirtualTourImage = async (i: SourceImage, m: TourMoveType, 
 export const applyEffectToTourImage = async (i: SourceImage, e: TourEffectType): Promise<string | null> => {
     const aspectRatio = await getClosestAspectRatio(i);
     try {
-        const images = await generateImageRest(`Apply effect ${e} to architectural scene.`, aspectRatio, 1, [i]);
+        const visualContext = await visualAnalyze(i);
+        const prompt = `Apply effect ${e} to this architectural scene: ${visualContext}. Keep structure identical.`;
+        const images = await generateImageRest(prompt, aspectRatio, 1);
         return images[0] || null;
     } catch (e) { return null; }
 };
