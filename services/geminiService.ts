@@ -52,23 +52,78 @@ export type SketchStyle = 'pencil' | 'watercolor' | 'oil';
 // --- REST API Helper for Image Generation (Pollinations.ai Fallback) ---
 // Google Imagen 3 API is restricted/beta and often returns 404/400 for personal keys.
 // To ensure the app "just works", we use Pollinations.ai (Flux model) which is free, fast, and high-quality.
-const generateImageRest = async (prompt: string, aspectRatio: string = "1:1", imageCount: number = 1): Promise<string[]> => {
+// --- REST API Helper for Imagen 3 (and Pollinations Fallback) ---
+const generateImageRest = async (prompt: string, aspectRatio: string = "1:1", imageCount: number = 1, inputImages: SourceImage[] = []): Promise<string[]> => {
+    const key = getStoredApiKey();
+
+    // 1. Try Google Imagen 3 API First (supports I2I if key has access)
+    if (key) {
+        try {
+            // Determine endpoint based on whether we have input images (Edit vs Generate)
+            // Note: Currently the public 'predict' endpoint for imagen-3.0-generate-001 is primarily T2I.
+            // However, we construct the payload to attempt passing the image if provided, 
+            // matching the expected structure for editing/variation if available.
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${key}`;
+
+            const instance: any = { prompt: prompt };
+
+            // If there's a source image, include it. 
+            // Note: Proper Img2Img often requires specific model versions or endpoints (like Vertex AI),
+            // but we attempt to pass it in the standard 'image' field for the `generate` or `edit` intent.
+            if (inputImages && inputImages.length > 0) {
+                instance.image = { bytesBase64Encoded: inputImages[0].base64 };
+                // If there's a second image (mask), include it? (API dependent, keeping simple for now)
+            }
+
+            const body = {
+                instances: [instance],
+                parameters: {
+                    sampleCount: imageCount,
+                    aspectRatio: aspectRatio === 'Auto' ? '1:1' : aspectRatio
+                }
+            };
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.predictions && data.predictions.length > 0) {
+                    return data.predictions.map((p: any) => `data:image/png;base64,${p.bytesBase64Encoded}`);
+                }
+            } else {
+                console.warn(`Google Imagen API Failed (${response.status}), falling back to Pollinations...`);
+            }
+        } catch (e) {
+            console.error("Google Imagen API Error:", e);
+        }
+    }
+
+    // 2. Fallback to Pollinations.ai (Free, Fast, T2I only usually)
+    // Note: Pollinations 'image' param requires a URL, not base64. 
+    // Without an upload server, we can only do T2I here effectively.
+    // To support "Sketch-to-Render" behavior via T2I, we rely on the prompt being very descriptive.
+
     try {
         let width = 1024;
         let height = 1024;
-        // Map aspect ratios to resolutions
+        // Map aspect ratios
         if (aspectRatio === "16:9") { width = 1280; height = 720; }
         else if (aspectRatio === "4:3") { width = 1024; height = 768; }
         else if (aspectRatio === "3:4") { width = 768; height = 1024; }
         else if (aspectRatio === "9:16") { width = 720; height = 1280; }
 
         const promises = Array.from({ length: imageCount }).map(async () => {
-            // Add random seed to ensure variety and cache-busting
             const seed = Math.floor(Math.random() * 1000000);
+            // We encode the prompt. If we had an image URL, we would append &image=${url}
             const finalUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
 
             const response = await fetch(finalUrl);
-            if (!response.ok) throw new Error("Image Gen Failed");
+            if (!response.ok) throw new Error("Pollinations Failed");
 
             const blob = await response.blob();
             return new Promise<string>((resolve, reject) => {
@@ -81,7 +136,7 @@ const generateImageRest = async (prompt: string, aspectRatio: string = "1:1", im
 
         return await Promise.all(promises);
     } catch (e) {
-        console.error("Image Generation Failed:", e);
+        console.error("All Image Generation Failed:", e);
         return [];
     }
 };
