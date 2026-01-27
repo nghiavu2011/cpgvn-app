@@ -410,7 +410,7 @@ export const convertToStyle = async (
     };
 
     try {
-        const images = await generateImageRest(prompts[style], "1:1", 1);
+        const images = await generateImageRest(prompts[style], "1:1", 1, [sourceImage]);
         return images[0] || null;
     } catch (e) {
         console.error("Conversion failed:", e);
@@ -532,7 +532,7 @@ Analytical, professional, engineering-oriented.`
     parts.push({ text: finalPrompt });
 
     try {
-        const images = await generateImageRest(finalPrompt, await getClosestAspectRatio(sourceImage), 1);
+        const images = await generateImageRest(finalPrompt, await getClosestAspectRatio(sourceImage), 1, [sourceImage, ...(moodImage ? [moodImage] : [])]);
         return images[0] || null;
     } catch (e) {
         console.error("Style conversion error:", e);
@@ -551,7 +551,7 @@ export const generateArchitecturalPrompts = async (sourceImage: SourceImage): Pr
     try {
         if (!ai) throw new Error("Gemini API Key is not set.");
         const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+            model: MODEL_IDS.TEXT_LOGIC,
             contents: [{ role: 'user', parts }],
         });
         return response.text.trim();
@@ -564,7 +564,7 @@ export const generateArchitecturalPrompts = async (sourceImage: SourceImage): Pr
 export const upscaleImage = async (image: SourceImage, target: '2k' | '4k'): Promise<string | null> => {
     try {
         // Upscaling is also an image generation task in this context
-        const images = await generateImageRest(`Upscale architecture image to ${target} quality. High detail.`, "1:1", 1);
+        const images = await generateImageRest(`Upscale architecture image to ${target} quality. High detail.`, "1:1", 1, [image]);
         return images[0] || null;
     } catch (e) { return null; }
 };
@@ -572,7 +572,7 @@ export const upscaleImage = async (image: SourceImage, target: '2k' | '4k'): Pro
 export const convertToSketchyStyle = async (image: SourceImage, type: 'interior' | 'exterior', style: SketchStyle = 'pencil'): Promise<string | null> => {
     const prompt = `Convert this ${type} image into an architectural ${style} drawing.`;
     try {
-        const images = await generateImageRest(prompt, "1:1", 1);
+        const images = await generateImageRest(prompt, "1:1", 1, [image]);
         return images[0] || null;
     } catch (e) { return null; }
 };
@@ -588,7 +588,7 @@ export const generateImages = async (s: SourceImage, p: string, t: 'exterior' | 
 
     try {
         // Use REST API for Imagen 3
-        const images = await generateImageRest(fullPrompt, vr, n);
+        const images = await generateImageRest(fullPrompt, vr, n, [s, ...(r ? [r] : [])]);
         return images;
     } catch (e) { throw e; }
 };
@@ -628,7 +628,7 @@ export const generateDiagramImage = async (s: SourceImage, t: string, n: string,
 export const generateVirtualTourImage = async (i: SourceImage, m: TourMoveType, mag: number): Promise<string | null> => {
     const aspectRatio = await getClosestAspectRatio(i);
     try {
-        const images = await generateImageRest(`Virtual Tour Perspective: Move ${m} ${mag} degrees.`, aspectRatio, 1);
+        const images = await generateImageRest(`Virtual Tour Perspective: Move ${m} ${mag} degrees.`, aspectRatio, 1, [i]);
         return images[0] || null;
     } catch (e) { return null; }
 };
@@ -636,7 +636,7 @@ export const generateVirtualTourImage = async (i: SourceImage, m: TourMoveType, 
 export const applyEffectToTourImage = async (i: SourceImage, e: TourEffectType): Promise<string | null> => {
     const aspectRatio = await getClosestAspectRatio(i);
     try {
-        const images = await generateImageRest(`Apply effect ${e} to architectural scene.`, aspectRatio, 1);
+        const images = await generateImageRest(`Apply effect ${e} to architectural scene.`, aspectRatio, 1, [i]);
         return images[0] || null;
     } catch (e) { return null; }
 };
@@ -683,7 +683,7 @@ export const outpaintImage = async (sourceImage: SourceImage, targetAspectRatio:
     // Basic outpainting via text-to-image usually isn't enough, but it's the best we can do with Image Gen API only
     try {
         // We'll generate a new image with the prompt, implying we can't truly 'extend' without editing endpoint
-        const images = await generateImageRest(`Outpaint/Extend: ${prompt}`, "16:9", 1);
+        const images = await generateImageRest(`Outpaint/Extend: ${prompt}`, "16:9", 1, [sourceImage]);
         return images[0] || null;
     } catch (e) { throw e; }
 };
